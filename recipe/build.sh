@@ -15,6 +15,19 @@ find $SRC_DIR/packages/PyTrilinos/src -name '*.i' -exec \
   sed -i.bak 's/SWIG_Python_AppendOutput(\(.*\));/SWIG_Python_AppendOutput(\1, 0);/g' {} +
 find $SRC_DIR/packages/PyTrilinos/src -name '*.i.bak' -delete
 
+# Fix vendored fmt in SEACAS/Ioss: format.h defines fmt::detail::allocator<T>
+# using unqualified malloc/free, but <cstdlib> is not visible at the point of
+# the template definition. Older toolchains pulled it in transitively; the
+# current Clang + macOS SDK do not, and strict two-phase name lookup then
+# rejects the unqualified names ("'free' should be declared prior to the call
+# site"). Prepend <cstdlib> so malloc/free are declared before the template.
+find $SRC_DIR/packages/seacas -path '*private_copy_fmt/fmt/format.h' | while read -r fmt_hdr; do
+  if ! grep -q '#include <cstdlib>' "$fmt_hdr"; then
+    printf '%s\n' '#include <cstdlib>' | cat - "$fmt_hdr" > "$fmt_hdr.new"
+    mv "$fmt_hdr.new" "$fmt_hdr"
+  fi
+done
+
 # Fix PyTrilinos_NumPy symbol visibility: NumPy 2.x defaults NPY_API_SYMBOL_ATTRIBUTE
 # to NPY_VISIBILITY_HIDDEN, which hides the PyArray_API symbol (renamed to
 # PyTrilinos_NumPy via PY_ARRAY_UNIQUE_SYMBOL) inside libpytrilinos.so. The SWIG
@@ -29,7 +42,14 @@ cd build
 export CMAKE_GENERATOR="Ninja"
 
 if [[ "${target_platform}" == osx-* ]]; then
-    export CXXFLAGS="${CXXFLAGS} -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY"
+    # Sacado specializes std::is_same / std::is_same_v for its Kokkos layout
+    # types (Kokkos_LayoutContiguous.hpp, Kokkos_LayoutNatural.hpp, ...). The
+    # current libc++ marks those std entities with [[clang::no_specializations]],
+    # which turns this long-standing specialization into a hard error under the
+    # -Winvalid-specialization group (DefaultError). libstdc++ (linux) has no
+    # such marker, so only osx is affected. Suppress the group to restore the
+    # previous behavior; the specialization is intentional and semantically fine.
+    export CXXFLAGS="${CXXFLAGS} -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -Wno-invalid-specialization"
 fi
 
 export MPI_FLAGS="--allow-run-as-root"
