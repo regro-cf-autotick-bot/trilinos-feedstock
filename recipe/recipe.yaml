@@ -16,6 +16,7 @@ source:
     sha256: b1d076c9c474893ddb340f0e2418a2dec50f52edaf134b54e4c01c5c53032eae
     patches:
       - pytrilinos2-install-init.patch
+      - pytrilinos2-fix-build-errors.patch
   - url: https://github.com/RosettaCommons/binder/archive/refs/tags/v${{ binder_version }}.tar.gz
     sha256: d595f800501e2156d4e4b8f4bc0ce142da2f147f9a98d488dfe24ae79c8ef6cf
     target_directory: binder
