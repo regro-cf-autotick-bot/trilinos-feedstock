@@ -69,8 +69,6 @@ outputs:
         # for building binder (and its Clang resource and libc++ headers)
         - clangdev ==${{ binder_llvm }}
         - llvmdev ==${{ binder_llvm }}
-        - if: osx
-          then: llvm-openmp
 
   - package:
       name: trilinos
