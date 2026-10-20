@@ -146,5 +146,6 @@ cmake -G Ninja \
   -D LLVM_DIR:PATH=$PREFIX/lib/cmake/llvm \
   $SRC_DIR
 
-ninja -j $CPU_COUNT
+JOBS=$(( CPU_COUNT > 1 ? CPU_COUNT - 1 : 1))
+ninja -j "$JOBS"
 ninja install
